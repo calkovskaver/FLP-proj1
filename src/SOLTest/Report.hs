@@ -13,6 +13,7 @@ module SOLTest.Report
 where
 
 import Data.Map.Strict (Map)
+import Data.Map.Strict qualified as Map
 import SOLTest.Types
 
 -- ---------------------------------------------------------------------------
