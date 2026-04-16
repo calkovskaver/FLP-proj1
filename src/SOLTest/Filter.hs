@@ -30,13 +30,18 @@ import SOLTest.Types
 -- * @filteredOut@ are the tests that were removed by filtering.
 --
 -- The union of @selected@ and @filteredOut@ always equals the input list.
---
+
+-- FilterSpec {fsIncludes = [], fsExcludes = [], fsUseRegex Bool}
+
 -- FLP: Implement this function using @matchesAny@ and @matchesCriterion@.
 filterTests ::
   FilterSpec ->
   [TestCaseDefinition] ->
   ([TestCaseDefinition], [TestCaseDefinition])
-filterTests spec tests = undefined
+filterTests spec tests = do
+  let included = if fsIncludes spec == [] then tests else filter (matchesAny False (fsIncludes spec)) tests
+  let excluded = filter (matchesAny False (fsExcludes spec)) included
+  (filter (not . (`elem` excluded)) included, excluded)
 
 -- | Check whether a test matches at least one criterion in the list.
 matchesAny :: Bool -> [FilterCriterion] -> TestCaseDefinition -> Bool
@@ -53,7 +58,11 @@ matchesAny useRegex criteria test =
 -- bonus extension, you can either remove the first argument and update the usages,
 -- or you can simply ignore the value.
 matchesCriterion :: Bool -> TestCaseDefinition -> FilterCriterion -> Bool
-matchesCriterion useRegex test criterion = undefined
+matchesCriterion useRegex test criterion = 
+  case criterion of
+    ByAny s -> tcdName test == s || tcdCategory test == s || s `elem` tcdTags test || s `elem` tcdDescription test
+    ByCategory s -> tcdCategory test == s
+    ByTag s -> s `elem` tcdTags test
 
 -- | Trim leading and trailing whitespace from a filter identifier.
 trimFilterId :: String -> String
