@@ -63,7 +63,10 @@ groupByCategory ::
   [TestCaseDefinition] ->
   Map String TestCaseReport ->
   Map String CategoryReport
-groupByCategory definitions results = undefined
+groupByCategory definitions results = 
+   let definitionsMap = Map.fromList [(tcdName def, def) | def <- definitions]
+      
+
 
 -- ---------------------------------------------------------------------------
 -- Statistics
