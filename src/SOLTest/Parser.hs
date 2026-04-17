@@ -14,7 +14,7 @@ module SOLTest.Parser
   )
 where
 
-import Data.Char (isSpace)
+import Data.Char (isSpace, isDigit)
 import Data.List (isPrefixOf)
 import SOLTest.Types
   ( TestCaseDefinition (..),
@@ -78,8 +78,11 @@ emptyHeader =
 --
 -- FLP: Implement this function.
 splitHeaderBody :: String -> ([String], String)
-splitHeaderBody content = undefined
-
+splitHeaderBody content = 
+  let splitted = break (all isSpace) (lines content)
+  in case splitted of
+    (header, []) -> (header, "")  
+    (header, _:body) -> (header, concat body)
 -- ---------------------------------------------------------------------------
 -- Header line parsing
 -- ---------------------------------------------------------------------------
@@ -96,7 +99,27 @@ parseHeaderLine hdr line
   | "*** " `isPrefixOf` line =
       let val = trim (drop 4 line)
        in Right hdr {phDescription = Just val}
-  -- ???
+  | "+++ " `isPrefixOf` line =
+      let val = trim (drop 4 line)
+        in Right hdr {phCategory = Just val}
+  | "--- " `isPrefixOf` line =
+      let val = trim (drop 4 line)
+        in Right hdr {phTags = phTags hdr ++ [val]}
+  | ">>> " `isPrefixOf` line =
+      let val = trim (drop 4 line)
+        in if all isDigit val
+           then Right hdr {phWeight = Just (read val)}
+           else Left "Invalid weight value"
+  | "!C! " `isPrefixOf` line =
+      let val = trim (drop 4 line)
+        in if all isDigit val
+          then Right hdr {phParserCodes = phParserCodes hdr ++ [read val]}
+          else Left "Invalid parser exit code value"
+  | "!I! " `isPrefixOf` line =
+      let val = trim (drop 4 line)
+        in if all isDigit val
+          then Right hdr {phInterpreterCodes = phInterpreterCodes hdr ++ [read val]}
+          else Left "Invalid interpreter exit code value"
   | otherwise = Right hdr -- unknown or comment line: skip
 
 -- | Parse all header lines into a 'ParsedHeader'.
@@ -190,7 +213,14 @@ parseTestFile tcf content = do
 --
 -- FLP: Implement this function.
 buildExitCodes :: TestCaseType -> ParsedHeader -> (Maybe [Int], Maybe [Int])
-buildExitCodes = undefined
+buildExitCodes = \testType hdr -> 
+  case testType of
+    ParseOnly -> (Just (phParserCodes hdr), Nothing)
+    ExecuteOnly -> (Nothing, Just (phInterpreterCodes hdr)) 
+    Combined -> if null (phParserCodes hdr) 
+                then (Nothing, Just (phInterpreterCodes hdr)) 
+                else (Just (phParserCodes hdr), Just (phInterpreterCodes hdr))
+
 
 -- ---------------------------------------------------------------------------
 -- Utilities
