@@ -15,7 +15,7 @@ where
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import SOLTest.Types
-
+import Data.List (find)
 -- ---------------------------------------------------------------------------
 -- Top-level report assembly
 -- ---------------------------------------------------------------------------
@@ -63,9 +63,30 @@ groupByCategory ::
   [TestCaseDefinition] ->
   Map String TestCaseReport ->
   Map String CategoryReport
-groupByCategory definitions results = 
-   let definitionsMap = Map.fromList [(tcdName def, def) | def <- definitions]
-      
+groupByCategory definitions results = Map.foldlWithKey' accumulate Map.empty results
+  where
+    accumulate accMap testName report =
+      case find (\d -> tcdName d == testName) definitions of
+        Nothing -> accMap
+        Just def ->
+          let catName = tcdCategory def
+              points = tcdPoints def
+              isPassed = case tcrResult report of
+                           Passed -> True   
+                           _    -> False  
+              
+              newReport = CategoryReport
+                { crTotalPoints = points
+                , crPassedPoints = if isPassed then points else 0
+                , crTestResults = Map.singleton testName report
+                }
+          in Map.insertWith mergeReports catName newReport accMap
+
+    mergeReports new old = CategoryReport
+      { crTotalPoints = crTotalPoints old + crTotalPoints new
+      , crPassedPoints = crPassedPoints old + crPassedPoints new
+      , crTestResults = Map.union (crTestResults old) (crTestResults new)
+      }
 
 
 -- ---------------------------------------------------------------------------
@@ -85,8 +106,20 @@ computeStats ::
   -- | Category reports (Nothing in dry-run mode).
   Maybe (Map String CategoryReport) ->
   TestStats
-computeStats foundCount loadedCount selectedCount mCategoryResults = undefined
-
+computeStats foundCount loadedCount selectedCount mCategoryResults = 
+  let histogram = case mCategoryResults of 
+                    Nothing -> Map.fromList [(rateToBin i, 0) | i <- [0.0..0.9]]
+                    Just categoryResults -> computeHistogram categoryResults
+      passedCount = case mCategoryResults of
+                      Nothing -> 0
+                      Just mCategoryResults -> sum [crPassedPoints cr | cr <- Map.elems mCategoryResults, crTotalPoints cr > 0]
+  in TestStats
+      { tsFoundTestFiles = foundCount,
+        tsLoadedTests = loadedCount,
+        tsSelectedTests = selectedCount,
+        tsPassedTests = passedCount,
+        tsHistogram = histogram
+      }
 -- ---------------------------------------------------------------------------
 -- Histogram
 -- ---------------------------------------------------------------------------
@@ -103,7 +136,15 @@ computeStats foundCount loadedCount selectedCount mCategoryResults = undefined
 --
 -- FLP: Implement this function.
 computeHistogram :: Map String CategoryReport -> Map String Int
-computeHistogram categories = undefined
+computeHistogram categories = 
+  let initialHistogram = Map.fromList [(rateToBin (fromIntegral passed / fromIntegral total), 0) | (_, CategoryReport total passed _) <- Map.toList categories]
+      histogram = foldl updateHistogram initialHistogram (Map.toList categories)
+  in histogram
+  where
+    updateHistogram hist (_, CategoryReport total passed _) =
+      let rate = if total > 0 then fromIntegral passed / fromIntegral total else 0
+          binKey = rateToBin rate
+      in Map.insertWith (+) binKey 1 hist
 
 -- | Map a pass rate in @[0, 1]@ to a histogram bin key.
 --
