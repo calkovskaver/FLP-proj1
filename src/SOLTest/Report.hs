@@ -112,7 +112,7 @@ computeStats foundCount loadedCount selectedCount mCategoryResults =
                     Just categoryResults -> computeHistogram categoryResults
       passedCount = case mCategoryResults of
                       Nothing -> 0
-                      Just mCategoryResults -> sum [crPassedPoints cr | cr <- Map.elems mCategoryResults, crTotalPoints cr > 0]
+                      Just categoryResults -> sum [crPassedPoints cr | cr <- Map.elems categoryResults, crTotalPoints cr > 0]
   in TestStats
       { tsFoundTestFiles = foundCount,
         tsLoadedTests = loadedCount,
