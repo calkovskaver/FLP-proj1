@@ -163,12 +163,6 @@ runDiff actualFile expectedFile = do
 -- ---------------------------------------------------------------------------
 -- Helpers
 -- ---------------------------------------------------------------------------
-testing :: FilePath -> IO (ExitCode, String)
-testing path = do
-  withTempSource "string" $ \tmpPath -> do
-    (res, res2) <- runDiff tmpPath path
-    return (res, res2)
-
 -- | Check the interpreter's result and optionally run diff.
 --
 -- Runs diff only when the interpreter exited with code 0 AND a @.out@ file
@@ -185,7 +179,7 @@ checkInterpreterResult ::
   Maybe FilePath ->
   IO (TestResult, Maybe String)
 checkInterpreterResult actualCode expectedCodes iOut mOutFile = 
-    if actualCode == 0 && isJust mOutFile
+    if actualCode == 0 && isJust mOutFile -- checks if the interpreter exited with code 0 and if a @.out@ file is present. Imported isJust to check Maybe value of path
       then do 
         withTempSource iOut $ \tmpPath -> do
           (exitCode, diffOut) <- runDiff tmpPath (fromMaybe "" mOutFile)
@@ -206,15 +200,13 @@ withTempSource content action =
     action tmpPath
 
 -- | Write the interpreter stdout to a temp file and diff it against @.out@.
--- The file is deleted when the action returns.
---
--- FLP: Implement this function. It will start similarly to @withTempSource@.
+-- The file is deleted when the action returns. 
 runDiffOnOutput :: String -> FilePath -> IO (TestResult, Maybe String)
 runDiffOnOutput iOut outFile = 
-  withSystemTempFile "sol-actutal-out.txt" $ \tmpPath tmpHadle -> do
+  withSystemTempFile "sol-actutal-out.txt" $ \tmpPath tmpHadle -> do -- create a temp file to store 'iOut' and diff it against the expected output file
     hPutStr tmpHadle iOut
     hClose tmpHadle
-    (exitCode, diffOut) <- runDiff tmpPath outFile
+    (exitCode, diffOut) <- runDiff tmpPath outFile -- running diff on two files
     let testResult = if exitCode == ExitSuccess then Passed else DiffFail
     let diffResult = if exitCode == ExitSuccess then Nothing else Just diffOut
     return (testResult, diffResult)
@@ -244,15 +236,13 @@ withExecutable (Just path) action = do
 -- The IO action returns 'Nothing' if the file is usable, or 'Just'
 -- an 'UnexecutedReason' describing the problem.
 --
--- FLP: Implement this function. The following functions may come in handy:
---      @doesFileExist@, @getPermissions@, @executable@
 checkExecutable :: FilePath -> IO (Maybe UnexecutedReason)
 checkExecutable path = do
-  result <- try (doesFileExist path) :: IO (Either IOException Bool)
-  case result of
-    Left err -> return (Just (UnexecutedReason CannotExecute (Just (show err))))
-    Right False -> return (Just (UnexecutedReason CannotExecute (Just "Executable file does not exist")))
-    Right True -> do 
+  result <- try (doesFileExist path) :: IO (Either IOException Bool) -- checking existence of the file, using try to catch exceptions that may occur
+  case result of -- checking the results of existece check and if exception occurred returning accompanying message
+    Left err -> return (Just (UnexecutedReason CannotExecute (Just (show err)))) -- case of exception
+    Right False -> return (Just (UnexecutedReason CannotExecute (Just "Executable file does not exist"))) -- case of file not existing
+    Right True -> do -- file existing, checking rights
       permissions <- getPermissions path
       if executable permissions
         then return Nothing

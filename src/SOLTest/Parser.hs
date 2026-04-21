@@ -211,14 +211,13 @@ parseTestFile tcf content = do
 -- is 'Nothing' (the parser must exit 0, which is implicit and not stored in the
 -- list); if @!C! 0@ was explicit, it is stored as @Just [0]@.
 --
--- FLP: Implement this function.
 buildExitCodes :: TestCaseType -> ParsedHeader -> (Maybe [Int], Maybe [Int])
-buildExitCodes = \testType hdr -> 
+buildExitCodes testType hdr = 
   case testType of
-    ParseOnly -> (Just (phParserCodes hdr), Nothing)
-    ExecuteOnly -> (Nothing, Just (phInterpreterCodes hdr)) 
-    Combined -> if null (phParserCodes hdr) 
-                then (Nothing, Just (phInterpreterCodes hdr)) 
+    ParseOnly -> (Just (phParserCodes hdr), Nothing) -- Returns (parser exit code, Nothing as no interpreter was ran)
+    ExecuteOnly -> (Nothing, Just (phInterpreterCodes hdr)) -- Returns (Nothing as no parser was ran, interpreter exit code)
+    Combined -> if null (phParserCodes hdr) -- checking existence of parser exit codes
+                then (Nothing, Just (phInterpreterCodes hdr)) -- no parses code given - implicitly 0 -> Nothing
                 else (Just (phParserCodes hdr), Just (phInterpreterCodes hdr))
 
 

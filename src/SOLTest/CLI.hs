@@ -150,8 +150,7 @@ filterSpecParser =
       )
 
 -- | Assemble raw filter string lists into a 'FilterSpec'.
---
--- FLP: Implement this function (read the long comment above first).
+-- Function converts string into Filter based on the inputs
 
 buildFilterSpec :: [String] -> [String] -> [String] -> [String] -> [String] -> [String] -> FilterSpec
 buildFilterSpec include exclude include_categories include_tags exclude_categories exclude_tags = FilterSpec

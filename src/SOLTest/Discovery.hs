@@ -15,27 +15,29 @@ import Control.Monad (forM)
 -- When @recursive@ is 'True', subdirectories are searched recursively.
 -- Returns a list of 'TestCaseFile' records, one per @.test@ file found.
 -- The list is ordered by the file system traversal order (not sorted).
---
--- FLP: Implement this function. The following functions may come in handy:
---      @doesDirectoryExist@, @takeExtension@, @forM@ or @mapM@,
---      @findCompanionFiles@ (below).
+
+-- For each path to a @.test@ file, it checks for the existence of @.in@ and @.out@ files, and using 
+-- 'findCompanionFiles' it assembles the files into a single 'TestCaseFile' record. 
+-- If recursive is set to 'True', it also checks wether each path is a directory and if so, it calls itself 
+-- recursively on this directory.
+
 discoverTests :: Bool -> FilePath -> IO [TestCaseFile]
 discoverTests recursive dir = do
   entries <- listDirectory dir
   let fullPaths = map (dir </>) entries
-  res <- forM fullPaths $ \entry -> do 
+  res <- forM fullPaths $ \entry -> do  -- using forM to iterate over the paths and perform IO actions
     if recursive
       then do
         isDir <- doesDirectoryExist entry
         if isDir
-          then discoverTests recursive entry
+          then discoverTests recursive entry -- recursive call for subdirectory
           else do
             r <-findCompanionFiles entry
             return [r]
       else do
         r <-findCompanionFiles entry
         return [r]
-  return (concat res)
+  return (concat res) -- concat the results into a single list of 'TestCaseFile' records
                     
 -- | Build a 'TestCaseFile' for a given @.test@ file path, checking for
 -- companion @.in@ and @.out@ files in the same directory.

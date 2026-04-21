@@ -56,19 +56,17 @@ buildReport discovered unexecuted mResults selected foundCount =
 --
 -- The @definitions@ list is used to look up each test's category and points.
 --
--- FLP: Implement this function. The following functions may (or may not) come in handy:
---      @Map.fromList@, @Map.foldlWithKey'@, @Map.empty@, @Map.lookup@, @Map.insertWith@,
---      @Map.map@, @Map.fromList@
 groupByCategory ::
   [TestCaseDefinition] ->
   Map String TestCaseReport ->
   Map String CategoryReport
-groupByCategory definitions results = Map.foldlWithKey' accumulate Map.empty results
+groupByCategory definitions results = Map.foldlWithKey' accumulate Map.empty results -- accumulate test results into category reports - starting accumulator = empty map
   where
     accumulate accMap testName report =
-      case find (\d -> tcdName d == testName) definitions of
+      case find (\d -> tcdName d == testName) definitions of -- finding the definition of the test with the name of the test for which we have the report, to be able to access its category and points
         Nothing -> accMap
         Just def ->
+          -- transforming the test report into single values 
           let catName = tcdCategory def
               points = tcdPoints def
               isPassed = case tcrResult report of
@@ -76,16 +74,16 @@ groupByCategory definitions results = Map.foldlWithKey' accumulate Map.empty res
                            _    -> False  
               
               newReport = CategoryReport
-                { crTotalPoints = points
-                , crPassedPoints = if isPassed then points else 0
-                , crTestResults = Map.singleton testName report
+                { crTotalPoints = points,
+                  crPassedPoints = if isPassed then points else 0,
+                  crTestResults = Map.singleton testName report
                 }
-          in Map.insertWith mergeReports catName newReport accMap
+          in Map.insertWith mergeReports catName newReport accMap -- inserting the new category report in the accumulator map, merging with existing report if category already has some tests
 
-    mergeReports new old = CategoryReport
-      { crTotalPoints = crTotalPoints old + crTotalPoints new
-      , crPassedPoints = crPassedPoints old + crPassedPoints new
-      , crTestResults = Map.union (crTestResults old) (crTestResults new)
+    mergeReports new old = CategoryReport -- merging two category reports by summing points and unioning test results
+      { crTotalPoints = crTotalPoints old + crTotalPoints new,
+        crPassedPoints = crPassedPoints old + crPassedPoints new,
+        crTestResults = Map.union (crTestResults old) (crTestResults new)
       }
 
 
@@ -94,8 +92,8 @@ groupByCategory definitions results = Map.foldlWithKey' accumulate Map.empty res
 -- ---------------------------------------------------------------------------
 
 -- | Compute the 'TestStats' from available information.
---
--- FLP: Implement this function. You'll use @computeHistogram@ here.
+-- Computing histogram for mCategoryResults input using 'computeHistrogram'
+-- Computing passed tests count by summing the passed point in each category report, if not present, returning 0
 computeStats ::
   -- | Total @.test@ files found on disk.
   Int ->
@@ -133,8 +131,10 @@ computeStats foundCount loadedCount selectedCount mCategoryResults =
 -- The rate is mapped to a bin key (@\"0.0\"@ through @\"0.9\"@) and the count
 -- of categories in each bin is accumulated. All ten bins are always present in
 -- the result, even if their count is 0.
---
--- FLP: Implement this function.
+-- Starts by creating an initial historgam with value 0 for all bins
+-- Then updates the histogram by iterating over all category reports and incrementing 
+-- the count in appropriate bin which is determined by the pass rate of the category report
+-- using the 'rateToBin' function to determine the bin key
 computeHistogram :: Map String CategoryReport -> Map String Int
 computeHistogram categories = 
   let initialHistogram = Map.fromList [(rateToBin (fromIntegral passed / fromIntegral total), 0) | (_, CategoryReport total passed _) <- Map.toList categories]

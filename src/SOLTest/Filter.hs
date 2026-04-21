@@ -32,16 +32,16 @@ import SOLTest.Types
 -- The union of @selected@ and @filteredOut@ always equals the input list.
 
 -- FilterSpec {fsIncludes = [], fsExcludes = [], fsUseRegex Bool}
-
--- FLP: Implement this function using @matchesAny@ and @matchesCriterion@.
+-- excluded = those that were specified no to be included
+-- selected  = included \ excluded
 filterTests ::
   FilterSpec ->
   [TestCaseDefinition] ->
   ([TestCaseDefinition], [TestCaseDefinition])
 filterTests spec tests = do
-  let included = if fsIncludes spec == [] then tests else filter (matchesAny False (fsIncludes spec)) tests
-  let excluded = filter (matchesAny False (fsExcludes spec)) included
-  (filter (not . (`elem` excluded)) included, excluded)
+  let included = if null (fsIncludes spec) then tests else filter (matchesAny False (fsIncludes spec)) tests -- if no includes specified -> all tests are inluded, otherwise choosing only those that were specified and that exist in the list of tests
+  let excluded = filter (matchesAny False (fsExcludes spec)) included -- filtering the including set by excluding those specified to be excluded
+  (filter (not . (`elem` excluded)) included, excluded) -- selected = included \ excluded, filteredOut = excluded
 
 -- | Check whether a test matches at least one criterion in the list.
 matchesAny :: Bool -> [FilterCriterion] -> TestCaseDefinition -> Bool
@@ -54,12 +54,10 @@ matchesAny useRegex criteria test =
 -- When @useRegex@ is 'True', the criterion value is treated as a POSIX
 -- regular expression matched against the relevant field(s).
 --
--- FLP: Implement this function. If you're not implementing the regex matching
--- bonus extension, you can either remove the first argument and update the usages,
--- or you can simply ignore the value.
+-- Not implementing the Regex matching extension!
 matchesCriterion :: Bool -> TestCaseDefinition -> FilterCriterion -> Bool
 matchesCriterion useRegex test criterion = 
-  case criterion of
+  case criterion of -- on the basis of the type of criterion, checking if provided test matches the provided string in criterion
     ByAny s -> tcdName test == s || tcdCategory test == s || s `elem` tcdTags test || s `elem` tcdDescription test
     ByCategory s -> tcdCategory test == s
     ByTag s -> s `elem` tcdTags test
