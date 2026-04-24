@@ -1,84 +1,21 @@
-# Šablona projektu pro funkcionální část FLP 2025/26
+### Problémy 
+1. Práce s Mapou v Report.sh. Pro mě trochu komplikované na představení si její struktury a obsahu. Nicméně po vypsání obsahu mapy v testech už to nebylo tak abstraktní. 
 
-Do této šablony budete doplňovat svá řešení implementace několika funkcí, ze kterých tak poskládáte funkční nástroj pro integrační testování projektů z předmětu IPP. Všechny důležité pokyny najdete v zadání, implementační detaily jsou vysvětleny v komentářích v kódu. V případě nejasností kontaktujte cvičicího.
+2. RunDiffOnOutput v Execuor.sh - Tuto funkci jsem implementovala až po `checkInterpreterResult`, kde jsem ji mohla použít - čili v `checkInterpreterResult` je v podstatě také implementovaná. 
 
-Tento soubor v odevzdaném projektu nahraďte svým `README.md` napsaným dle zadání (pokud žádný nepíšete, vůbec jej do odevzdaného archivu nedávejte).
+### Dokumentace kódu je přítomna vždy u implementovaných funkcí
 
-## Struktura projektu
+### Další knihovny a specifické výrazy
+1. Discovery.hs:
+- `import System.Directory (doesDirectoryExist)` - pro kontrolu rekurzivního průchodu adresáře s testy
+- `import Control.Monad (forM)` - pro monadický "průchod" cestami souborů, které jsou v zadaném adresáři
 
-Je jistým zvykem, že se haskellové programy rozdělují (alespoň) na dvě části:
-- samotný spustitelný program, ve kterém žije především hlavní struktura programu a funkce `main`, která vrací `IO` akci, která bude po spuštění provedena;
-- knihovnu, ve které žije většina samotné logiky programu.
+2. Executor.hs:
+- `import Data.Maybe (isJust)` - ke kontrole hodnoty mOutFile. Pokud se jedná o Nothing, neproběhne kontrola.
+- `import System.Directory (executable, getPermissions)` - Pro kontrolu oprávnění souboru, zda je executable, aby mohl být později spuštěn - např interpret nebo parser.
 
-Má to dva hlavní důvody (neberte je však úplně dogmaticky):
-- Rozlišení mezi *pure* světem, který funguje předvídatelně – funkce má pro stejný vstup vždy stejný výstup, a světem s *vedlejšími efekty* – `IO` akce po vyhodnocení vždycky mohou dopadnout jinak. Typicky chceme psát funkcionální programy tak, že většinu jejich komplexní logiky vyjadřujeme pomocí *pure* funkcí, které jsou definovány v knihovně. Ve spustitelné části pak máme jen (relativně) jednoduchý `IO` kód, který obstarává potřebnou interakci s vnějším světem, k čemuž využívá právě ty složité *pure* funkce z knihovny.
-- Testovatelnost – kód k testování unit testy nebo property testy žije v knihovně, zatímco aplikační kód už vyžaduje spíše integrační testování.  
+3. Parser.hs:
+- `import Data.Char (isDigit)` - ke kontrole, zda se za parametry testu nachází jen a pouze platné celé číslo
 
-**Struktura repozitáře:**
-- `app/` obsahuje kód spustitelné aplikace – je v něm pouze jediný modul `Main.hs`.
-  - **Zde začněte**, abyste se seznámili s celkovým postupem programu. Nemělo by ale být nutné zde cokoliv měnit.
-
-- `src/SOLTest/` obsahuje řadu modulů knihovní části:
-  - `CLI.hs`: Definuje parser pro parametry příkazové řádky pomocí knihovny [optparse-applicative](https://github.com/pcapriotti/optparse-applicative).
-    - Zde **doplňte** funkci `buildFilterSpec`.
-
-  - `Discovery.hs`: Definuje funkci pro (potenciálně rekurzivní) prohledání cílového adresáře s testy, která vrací základní „deskriptory” nalezených `.test` souborů.
-    - Zde **doplňte** funkci `discoverTests`.
-
-  - `Executor.hs`: Definuje funkce (`IO` akce) pro spouštění parseru, interpretu a nástroje *diff*.
-    - Zde **doplňte** funkce `executeCombined`, `checkInterpreterResult`, `runDiffOnOutput`, `checkExecutable`.
-
-  - `Filter.hs`: Definuje funkci pro filtrování testů na základě dodaných pravidel (získaných z CLI argumentů).
-    - Zde **doplňte** funkce `filterTests` a `matchesCriterion`.
-
-  - `JSON.hs`: Definuje pro jednotlivé vlastní datové typy způsob, jakým se serializují do výstupního formátu JSON. Nemělo by být nutné zde cokoliv měnit.
-
-  - `Parser.hs`: Definuje funkce pro načtení souboru s testem ve formátu SOLtest.
-    - Zde máte dvě možnosti.
-    - Možnost 1: Jen **doplňte** funkce `splitHeaderBody`, `parseHeaderLine`, `buildExitCodes`.
-    - Možnost 2 (za bonusový bod ✨): Přidejte do projektu knihovnu [megaparsec](https://hackage.haskell.org/package/megaparsec), která slouží pro vytváření „produkčních” parserů, a správným způsobem ji zde využijte (je to trochu kanón na vrabce, ale proč by ne). Dále upravte property testy v `ParserSpec`, aby tuto novou implementaci řádně testovaly.
-
-  - `Report.hs`: Definuje funkce pro sestavení výsledného reportu o testování.
-    - Zde **doplňte** funkce `groupByCategory`, `computeStats`, `computeHistogram`.
-
-- `test/SOLTest/` obsahuje předchystané property-based testy pro čistě funkcionální (*pure*) části projektu. Zkuste se s nimi podrobně seznámit, abyste alespoň obecně pochopili, jak se QuickTest používá. Z definovaných vlastností je možné vyčíst také očekávané chování vašich funkcí.
-
-- `cabal.project` je soubor, který ovlivňuje nastavení *projektu* – lze v něm nastavit například verzi překladače.
-- `flp-fun.cabal` je soubor, který konfiguruje *balíčky* – základní „samostatně přeložitelné” programové jednotky (knihovna, spustitelný program, spustitelný program pro testy).
-
-- `dummy-parser.py` a `dummy-interpreter.py` jsou jednoduché pythonové skripty, které je možné použít pro testování vašeho nástroje jakožto implementace překladače a interpretu. Jejich chování je vysvětleno v záhlaví těchto souborů.
-- `example_sol_tests/` obsahuje několik ukázkových definic testů (pro použití s dummy překladačem/interpretem). Soubor `expected_output.json` pak ukazuje, jaký výstupní JSON by měl váš nástroj pro tyto testy vytvořit.
-
-## Překlad, spouštění, testování
-
-Při vývoji je nejpohodlnější pro spuštění projektu používat příkaz `cabal run`:
-
-```sh
-cabal run flp-fun -- (argumenty předané spuštěnému programu)
-```
-
-Pokud chcete své řešení vyzkoušet např. na dodané sadě ukázek, můžete tedy spustit:
-
-```sh
-# skripty použité pro -p, -t vyžadují, aby v systému byl nainstalovaný Python 3
-cabal run flp-fun -- -p ./dummy-parser.py -t ./dummy-interpreter.py example_sol_tests
-
-# pro "pretty print" výstupního JSON lze použít utilitu `jq` (nutno nainstalovat do systému)
-cabal run flp-fun -- -p ./dummy-parser.py -t ./dummy-interpreter.py example_sol_tests | jq
-```
-
-Tento příkaz by měl automaticky zajistit překlad, pokud je nutný. Vynutit překlad je možné také pomocí příkazu `cabal build`. Vytvořená binárka bude k dispozici jako soubor `./dist-newstyle/build/[platforma]/ghc-[překladač]/flp-fun-[verze]/x/flp-fun/build/flp-fun/flp-fun`.
-
-Pokud by Cabal házel nějaké divné chyby, zkuste nejprve `cabal clean`, pak `cabal build` a až pak `cabal run`.
-
-Přiložené property-based testy spustíte pomocí `cabal test`.
-
-Při vývoji se také může hodit příkaz `cabal repl`, který spustí interaktivní prostředí GHCi, do kterého automaticky načte všechny moduly z knihovny (které se povede přeložit). Metapříkazem `:r` je pak možné změněné moduly přeložit a znovu načíst.
-
-## Jak začít
-
-Aby se projekt vůbec přeložil, je nutné nejprve v `CLI.hs` správně vytvořit funkci `buildFilterSpec` – v tomto případě máte za úkol i přijít na její typovou signaturu, proto v projektu vůbec není.
-
-Některé funkce, které máte implementovat, jsou v šabloně definovány pomocí `= undefined`. Takové funkce se sice přeloží, ale jejich použití povede na chybu při běhu. Dalším krokem by tedy mohlo být doplnit na tato místa nějakou „dummy implementaci“ – tak, ať funkce vrátí nějakou výchozí hodnotu. Tímto způsobem se postupně seznámíte s typy, které v projektu používáte. Po doplnění takových výchozích hodnot pak začne projekt po spuštění i něco vypisovat.
-
-Dále už stačí jít funkci po funkci a postupně jednu po druhé ladit s využitím `cabal repl`. Jakmile budete mít pocit, že by všechno mělo aspoň nějak fungovat, spusťte své řešení s „dummy“ parserem a interpretem a zkoušejte, jak reaguje na různé případy. Doporučuji použít AI nástroje k vygenerování testovacích souborů, které pokrývají různé možné situace.
+4. Report.hs:
+- `import Data.List (find)` - pro hledání definice testu s daným jménem, aby mohl být vytvořen odpovídající report podle kategorií
